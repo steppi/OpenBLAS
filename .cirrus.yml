@@ -174,7 +174,7 @@ task:
     env:
       BUILD: [cmake, make]
   ec2_instance:
-    image: ami-06fd8a495a537da8b
+    image: ami-08c417ecfdc73a8c2
     type: c7g.large
     region: us-east-1
     architecture: arm64
