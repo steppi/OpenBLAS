@@ -184,7 +184,6 @@ task:
     - apt update
     - apt install -y git
     - git clone https://github.com/${CIRRUS_REPO_FULL_NAME}.git
-    - cd OpenBLAS
   print_sys_info_script:
     - cat /proc/cpuinfo
   dependencies_script:
@@ -200,6 +199,7 @@ task:
       - ccache -s
   build_script:
     - |
+      cd OpenBLAS
       case "${BUILD}" in
         "make")
           make -j$(nproc) DYNAMIC_ARCH=1 USE_OPENMP=0 FC="ccache gfortran"
@@ -226,6 +226,7 @@ task:
     - ccache -s
   test_script:
     - |
+      cd OpenBLAS
       case "${BUILD}" in
         "make")
           MAKE_FLAGS='DYNAMIC_ARCH=1 USE_OPENMP=0'
