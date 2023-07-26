@@ -165,3 +165,85 @@ FreeBSD_task:
 #    - cd build
 #    - cmake --build .
 #    - ctest
+
+
+task:
+  name: arm64_graviton
+  env:
+    AWS_ACCESS_KEY_ID: ENCRYPTED[122c3b6b5879685bffb2715132f9e2e0302d5369f2571fe91bcb06b8e80290af07712cfb7a92369c7390fc6ab568ddb3]
+    AWS_SECRET_ACCESS_KEY: ENCRYPTED[9d46ba71e252b89f0d6d69bbab5399d92d4d28147360ab2f0068f563a149354070ce5b2bb8580e86cb692e75cee026e1]
+  matrix:
+    env:
+      BUILD: [cmake, make]
+  ec2_instance:
+    image: ami-06fd8a495a537da8b
+    type: c7g.large
+    region: us-east-1
+    architecture: arm64
+  clone_script:
+    - apt update
+    - apt install -y git
+    - git clone https://github.com/${CIRRUS_REPO_FULL_NAME}.git
+    - cd OpenBLAS
+  print_sys_info_script:
+    - cat /proc/cpuinfo
+  dependencies_script:
+    - apt install -y gfortran cmake ccache libtinfo5
+  cache:
+    folder: ~/.ccache
+    fingerprint_script: echo $BUILD
+    populate_script:
+      - test -d ~/.ccache || mkdir -p ~/.ccache
+      - echo "max_size = 300M" > ~/.ccache/ccache.conf
+      - echo "compression = true" >> ~/.ccache/ccache.conf
+      - if [ "${BUILD}" = "make" ]; then export PATH="/usr/lib/ccache:$PATH"; fi
+      - ccache -s
+  build_script:
+    - |
+      case "${BUILD}" in
+        "make")
+          make -j$(nproc) DYNAMIC_ARCH=1 USE_OPENMP=0 FC="ccache gfortran"
+          ;;
+        "cmake")
+          mkdir build && cd build
+          cmake -DDYNAMIC_ARCH=1 \
+                -DNOFORTRAN=0 \
+                -DBUILD_WITHOUT_LAPACK=0 \
+                -DCMAKE_VERBOSE_MAKEFILE=ON \
+                -DCMAKE_BUILD_TYPE=Release \
+                -DCMAKE_Fortran_COMPILER=gfortran \
+                -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+                -DCMAKE_Fortran_COMPILER_LAUNCHER=ccache \
+                ..
+          cmake --build .
+          ;;
+        *)
+          echo "Configuration not supported"
+          exit 1
+          ;;
+      esac
+  ccache_status_script:
+    - ccache -s
+  test_script:
+    - |
+      case "${BUILD}" in
+        "make")
+          MAKE_FLAGS='DYNAMIC_ARCH=1 USE_OPENMP=0'
+          echo "::group::Tests in 'test' directory"
+          make -C test $MAKE_FLAGS FC="ccache gfortran"
+          echo "::endgroup::"
+          echo "::group::Tests in 'ctest' directory"
+          make -C ctest $MAKE_FLAGS FC="ccache gfortran"
+          echo "::endgroup::"
+          echo "::group::Tests in 'utest' directory"
+          make -C utest $MAKE_FLAGS FC="ccache gfortran"
+          echo "::endgroup::"
+          ;;
+        "cmake")
+          cd build && ctest
+          ;;
+        *)
+          echo "Configuration not supported"
+          exit 1
+          ;;
+      esac
