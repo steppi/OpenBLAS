@@ -171,8 +171,10 @@ task:
   name: arm64_graviton
   aws_credentials: ENCRYPTED[ee040e2212311fb30afdf84911d82a8ab9b2dd9963a0e285ac02f918d0cb2cf0f7787669e5960e70cee9c7be93a460eb]
   matrix:
-    env:
-      BUILD: [cmake, make]
+    - env:
+        BUILD: make
+    - env:
+        BUILD: cmake
   ec2_instance:
     image: ami-08c417ecfdc73a8c2
     type: c7g.large
